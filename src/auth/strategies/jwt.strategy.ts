@@ -10,22 +10,21 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private configService: ConfigService,
     private usersService: UsersService,
   ) {
+    const secret = configService.get<string>('JWT_SECRET');
+    
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get('JWT_SECRET'),
+      secretOrKey: secret || 'default-secret-change-in-production',
     });
   }
 
   async validate(payload: any) {
     const user = await this.usersService.findById(payload.sub);
-    
-    // Remove password from user object
-    if (user) {
-      const { password, ...result } = user;
-      return result;
+    if (!user) {
+      return null;
     }
-    
-    return null;
+    const { password, ...result } = user;
+    return result;
   }
 }

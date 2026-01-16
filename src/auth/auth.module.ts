@@ -1,28 +1,34 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { UsersModule } from '../users/users.module';
-import { JwtStrategy } from './strategies/jwt.strategy';
+import { ConfigModule } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { SimpleController } from './simple.controller';
+import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module'; // KEEP
+import { User } from './users/user.entity';
 
 @Module({
   imports: [
-    UsersModule,
-    PassportModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get('JWT_SECRET'),
-        signOptions: {
-          expiresIn: configService.get('JWT_EXPIRES_IN', '1d'),
-        },
-      }),
-      inject: [ConfigService],
+    ConfigModule.forRoot({ isGlobal: true }),
+    
+    TypeOrmModule.forRoot({
+      type: 'sqlite',
+      database: 'task_manager.db',
+      entities: [User],
+      synchronize: true,
+      logging: true,
     }),
+
+    TypeOrmModule.forFeature([User]),
+    UsersModule,
+    AuthModule, // AuthController is already in AuthModule
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  controllers: [
+    AppController, 
+    SimpleController, 
+    // REMOVE AuthController from here
+  ],
+  providers: [AppService],
 })
-export class AuthModule {}
+export class AppModule {}

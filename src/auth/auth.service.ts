@@ -1,9 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
-import { RegisterDto, LoginDto } from './dto/auth.dto';
-import { UserResponseDto } from './dto/user-response.dto';
-import { plainToClass } from 'class-transformer';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -12,47 +10,14 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async register(registerDto: RegisterDto): Promise<{
-    user: UserResponseDto;
-    token: string;
-  }> {
-    // Check if user exists
-    const existingUser = await this.usersService.findByEmail(registerDto.email);
-    if (existingUser) {
-      throw new UnauthorizedException('Email already exists');
-    }
-
-    // Hash password
-    const hashedPassword = await this.usersService.hashPassword(registerDto.password);
-
-    // Create user
-    const user = await this.usersService.create({
-      ...registerDto,
-      password: hashedPassword,
-    });
-
-    // Generate token
-    const token = this.generateToken(user);
-
-    // Transform user to response DTO
-    const userResponse = plainToClass(UserResponseDto, user, {
-      excludeExtraneousValues: true,
-    });
-
-    return { user: userResponse, token };
-  }
-
-  async login(loginDto: LoginDto): Promise<{
-    user: UserResponseDto;
-    token: string;
-  }> {
-    // Find user
+  async login(loginDto: LoginDto) {
+    // 1. Find user by email
     const user = await this.usersService.findByEmail(loginDto.email);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Check password
+    // 2. Compare passwords
     const isPasswordValid = await this.usersService.comparePasswords(
       loginDto.password,
       user.password,
@@ -61,30 +26,24 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Generate token
-    const token = this.generateToken(user);
+    // 3. Generate JWT token
+    const payload = { email: user.email, sub: user.id, username: user.username };
+    const token = this.jwtService.sign(payload);
 
-    // Transform user to response DTO
-    const userResponse = plainToClass(UserResponseDto, user, {
-      excludeExtraneousValues: true,
-    });
-
-    return { user: userResponse, token };
+    // 4. Return user data (without password) and token
+    const { password, ...userWithoutPassword } = user;
+    return {
+      user: userWithoutPassword,
+      token,
+    };
   }
 
-  private generateToken(user: any): string {
-    const payload = { email: user.email, sub: user.id };
-    return this.jwtService.sign(payload);
-  }
-
-  async getProfile(userId: number): Promise<UserResponseDto> {
-    const user = await this.usersService.findById(userId);
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+  async validateUser(email: string, password: string) {
+    const user = await this.usersService.findByEmail(email);
+    if (user && await this.usersService.comparePasswords(password, user.password)) {
+      const { password, ...result } = user;
+      return result;
     }
-
-    return plainToClass(UserResponseDto, user, {
-      excludeExtraneousValues: true,
-    });
+    return null;
   }
 }

@@ -5,29 +5,29 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { SimpleController } from './simple.controller';
 import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
 import { User } from './users/user.entity';
 
 @Module({
   imports: [
-    // Load environment variables
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
-
-    // SQLite configuration - WORKS 100%
+    ConfigModule.forRoot({ isGlobal: true }),
+    
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: 'task_manager.db',
       entities: [User],
-      synchronize: true, // Auto-create tables
+      synchronize: true,
       logging: true,
     }),
 
-    // Feature modules
     TypeOrmModule.forFeature([User]),
     UsersModule,
+    AuthModule,
   ],
-  controllers: [AppController, SimpleController],
+  controllers: [
+    AppController, 
+    SimpleController,
+  ],
   providers: [AppService],
 })
 export class AppModule {}

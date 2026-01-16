@@ -21,7 +21,6 @@ export class AppController {
       return { error: 'Email already exists' };
     }
     
-    // Hash password before creating user
     const hashedPassword = await this.usersService.hashPassword(body.password || 'temp123');
     
     const user = await this.usersService.create({
@@ -36,17 +35,41 @@ export class AppController {
     };
   }
 
+  @Post('login') // SIMPLE VERSION
+  async login(@Body() body: any) {
+    const user = await this.usersService.findByEmail(body.email);
+    if (!user) {
+      return { error: 'Invalid credentials' };
+    }
+
+    const isPasswordValid = await this.usersService.comparePasswords(
+      body.password,
+      user.password,
+    );
+    
+    if (!isPasswordValid) {
+      return { error: 'Invalid credentials' };
+    }
+
+    // Simple response without JWT for now
+    const { password, ...userWithoutPassword } = user;
+    return {
+      message: 'Login successful',
+      user: userWithoutPassword,
+      token: 'jwt-will-be-added-later' // Placeholder
+    };
+  }
+
   @Get('db-check')
-async dbCheck() {
-  const dbType = process.env.DB_TYPE || 'unknown';
-  const dbHost = process.env.DB_HOST || 'unknown';
-  return {
-    database: dbType,
-    host: dbHost,
-    message: 'Database connection check',
-    timestamp: new Date()
-  };
-}
+  async dbCheck() {
+    const dbHost = process.env.DB_HOST || 'sqlite';
+    return {
+      database: 'sqlite',
+      host: dbHost,
+      message: 'Database connection check',
+      timestamp: new Date()
+    };
+  }
 
   @Get('test')
   test() {
