@@ -19,8 +19,10 @@ async function bootstrap() {
     });
   }
   
-  const port = 4000;
+  const port = 4000; // Hardcoded to 4000
   await app.listen(port);
   console.log(`\n🚀 Server running on http://localhost:${port}`);
 }
+
+// ONLY THIS ONE CALL
 bootstrap();
